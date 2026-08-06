@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cambio de resinas — 28199-00X</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --blue:   #2a78d6;
+    --green:  #1baf7a;
+    --purple: #7f77dd;
+    --red:    #e24b4a;
+    --orange: #eda100;
+    --bg:     #f7f7f5;
+    --surface:#ffffff;
+    --border: #e2e1db;
+    --text:   #0b0b0b;
+    --muted:  #898781;
+    --radius: 8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* Header */
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:20px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  .header-left h1{font-size:20px;font-weight:600;color:var(--text);}
+  .header-left p{font-size:12px;color:var(--muted);margin-top:3px;}
+  .badge{background:#eaf3de;color:#3b6d11;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;}
+
+  /* Main */
+  .main{max-width:1100px;margin:0 auto;padding:24px 20px;}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+  .kpi-label{font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;}
+  .kpi-val{font-size:20px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;transition:color .2s;}
+  .kpi-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+  .kpi-val.alert{color:var(--red);}
+  .kpi-val.ok{color:var(--green);}
+  .kpi.highlight{border-color:#f7c1c1;}
+
+  /* Controls */
+  .controls{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;}
+  .ctrl-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .ctrl-row:last-child{margin-bottom:0;}
+  .btn-play{display:flex;align-items:center;gap:6px;padding:6px 16px;font-size:12px;font-weight:500;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text);transition:.15s;}
+  .btn-play:hover{background:var(--bg);}
+  input[type=range]{flex:1;accent-color:var(--blue);height:4px;cursor:pointer;}
+  .week-label{font-size:12px;color:var(--muted);min-width:80px;text-align:right;font-variant-numeric:tabular-nums;}
+  .zoom-label{font-size:11px;color:var(--muted);margin-right:4px;white-space:nowrap;}
+  .zoom-btns{display:flex;gap:6px;flex-wrap:wrap;}
+  .zbtn{background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 11px;font-size:11px;color:var(--muted);cursor:pointer;transition:.15s;}
+  .zbtn.active,.zbtn:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+
+  /* Legend */
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;}
+  .leg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
+  .leg-line{width:20px;height:3px;border-radius:2px;display:inline-block;}
+  .leg-dash{width:20px;height:0;display:inline-block;}
+
+  /* Chart */
+  .chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;}
+  canvas{width:100%!important;}
+
+  /* Tooltip */
+  .ttbox{position:absolute;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:11px;pointer-events:none;display:none;z-index:20;min-width:220px;box-shadow:0 4px 16px rgba(0,0,0,.10);}
+  .tt-title{font-weight:600;font-size:12px;color:var(--text);margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:5px;}
+  .tt-row{display:flex;justify-content:space-between;gap:16px;padding:2px 0;align-items:center;}
+  .tt-lbl{color:var(--muted);display:flex;align-items:center;gap:6px;font-size:11px;}
+  .tt-val{font-weight:600;color:var(--text);font-size:11px;font-variant-numeric:tabular-nums;}
+
+  /* Fase chips */
+  .fases{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .fase-chip{padding:4px 12px;border-radius:20px;font-size:11px;}
+
+  /* Tabla info */
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;}
+  @media(max-width:600px){.info-grid{grid-template-columns:1fr;}}
+  .info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .info-card h3{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg);}
+  .info-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .info-table td{padding:8px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+  .info-table td:first-child{color:var(--muted);width:45%;}
+  .info-table td:last-child{font-weight:500;color:var(--text);}
+  .info-table tr:last-child td{border-bottom:none;}
+  .tag-ok{background:#eaf3de;color:#3b6d11;padding:1px 7px;border-radius:10px;font-size:10px;}
+  .tag-warn{background:#faeeda;color:#854f0b;padding:1px 7px;border-radius:10px;font-size:10px;}
+  .tag-err{background:#fcebeb;color:#a32d2d;padding:1px 7px;border-radius:10px;font-size:10px;}
+
+  /* Footer */
+  .footer{text-align:center;font-size:11px;color:var(--muted);padding:24px;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Cambio de resinas — 28199-00X</h1>
+    <p>Migración Alpha Gary → Teknor Apex · Proyección Nov-2026 a Abr-2027</p>
+  </div>
+  <span class="badge">Cliente: Moog Medical</span>
+</div>
+
+<div class="main">
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-label">Alpha Gary</div><div class="kpi-val" id="kAG">80,000 lbs</div><div class="kpi-sub">en inventario</div></div>
+    <div class="kpi"><div class="kpi-label">Teknor Apex</div><div class="kpi-val" id="kTK">0 lbs</div><div class="kpi-sub">en inventario</div></div>
+    <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val" id="kTOT">80,000 lbs</div><div class="kpi-sub">combinado</div></div>
+    <div class="kpi"><div class="kpi-label">Semana</div><div class="kpi-val" id="kFECHA" style="font-size:14px">02-Nov-26</div><div class="kpi-sub" id="kFASE">Fase 1 · Prueba</div></div>
+    <div class="kpi highlight"><div class="kpi-label" style="color:#a32d2d;">⚠ PO AG en riesgo</div><div class="kpi-val" style="font-size:14px;color:#a32d2d;">26-Ene-27</div><div class="kpi-sub">cancelar si luz verde dic</div></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-row">
+      <button class="btn-play" id="btnPlay">▶ Reproducir</button>
+      <input type="range" id="slider" min="0" max="25" value="0" step="1" aria-label="Semana">
+      <span class="week-label" id="slOut">Sem. 0</span>
+    </div>
+    <div class="ctrl-row">
+      <span class="zoom-label">Zoom:</span>
+      <div class="zoom-btns">
+        <button class="zbtn active" onclick="sz(0)">Todo Nov → Abr</button>
+        <button class="zbtn" onclick="sz(1)">Fase 1 · Nov-Dic</button>
+        <button class="zbtn" onclick="sz(2)">Fase 2 · Ene-Feb</button>
+        <button class="zbtn" onclick="sz(3)">Fase 3 · Mar-Abr</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <span class="leg"><span class="leg-line" style="background:var(--blue);"></span>Alpha Gary</span>
+    <span class="leg"><span class="leg-line" style="background:var(--green);"></span>Teknor Apex</span>
+    <span class="leg"><span class="leg-dash" style="border-top:2px dashed var(--purple);"></span>Total acumulado</span>
+    <span class="leg"><span class="leg-dash" style="border-top:2px dashed var(--red);"></span>Ss Alpha Gary</span>
+    <span class="leg"><span class="leg-dash" style="border-top:2px dashed var(--orange);"></span>Ss Teknor</span>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-wrap">
+    <div class="ttbox" id="ttBox">
+      <div class="tt-title" id="ttTitle"></div>
+      <div id="ttRows"></div>
+    </div>
+    <canvas id="mc" height="420" role="img" aria-label="Diente de sierra interactivo migración resinas 28199-00X. Pasa el mouse sobre las líneas para ver los niveles de inventario."></canvas>
+  </div>
+
+  <!-- Fase chips -->
+  <div class="fases">
+    <span class="fase-chip" style="background:rgba(219,234,254,.6);color:#1e40af;">Fase 1 · Prueba Nov-Dic · 50% Alpha + 50% Teknor</span>
+    <span class="fase-chip" style="background:rgba(254,243,199,.7);color:#854f0b;">Fase 2 · Gasto Alpha 50-50 · Ene-Feb</span>
+    <span class="fase-chip" style="background:rgba(220,252,231,.7);color:#166534;">Fase 3 · Teknor 100% · Mar-Abr</span>
+  </div>
+
+  <!-- Info Grid -->
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>Parámetros del modelo</h3>
+      <table class="info-table">
+        <tr><td>Consumo mensual (2 moldes)</td><td>84,128 lbs</td></tr>
+        <tr><td>Consumo semanal 50-50</td><td>9,782 lbs/sem por resina</td></tr>
+        <tr><td>Consumo semanal 100% TK</td><td>19,565 lbs/sem</td></tr>
+        <tr><td>MOQ / FCL</td><td>40,000 lbs (contenedor 40')</td></tr>
+        <tr><td>Lead time Alpha Gary</td><td>12 semanas</td></tr>
+        <tr><td>Lead time Teknor Apex</td><td>10 semanas</td></tr>
+        <tr><td>SS Alpha Gary (nov-dic)</td><td>80,000 lbs (2 FCL)</td></tr>
+        <tr><td>SS Teknor objetivo</td><td>80,000 lbs (2 FCL)</td></tr>
+      </table>
+    </div>
+    <div class="info-card">
+      <h3>Hitos del plan</h3>
+      <table class="info-table">
+        <tr><td>1ª PO Teknor — emitir</td><td><span class="tag-err">24-Ago-26 · crítico</span></td></tr>
+        <tr><td>Inicio prueba (inyección)</td><td>02-Nov-26</td></tr>
+        <tr><td>Feedback del cliente</td><td>Diciembre 2026</td></tr>
+        <tr><td>Luz verde esperada</td><td>04-Ene-27</td></tr>
+        <tr><td>PO AG en riesgo — cancelar</td><td><span class="tag-err">antes 10-Ene-27</span></td></tr>
+        <tr><td>PO Teknor día luz verde</td><td><span class="tag-warn">04-Ene-27</span></td></tr>
+        <tr><td>Alpha Gary agotado</td><td>~22-Mar-27</td></tr>
+        <tr><td>Teknor 100% estable</td><td><span class="tag-ok">desde Mar-27</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">Electroplast · Migración de resinas 28199-00X · Moog Medical · Nov-2026 → Abr-2027</div>
+
+<script>
+const c1m=9782.36,call=19564.72;
+const WEEKS=['02-Nov-26','09-Nov-26','16-Nov-26','23-Nov-26','30-Nov-26','07-Dic-26','14-Dic-26','21-Dic-26','28-Dic-26','04-Ene-27','11-Ene-27','18-Ene-27','25-Ene-27','01-Feb-27','08-Feb-27','15-Feb-27','22-Feb-27','01-Mar-27','08-Mar-27','15-Mar-27','22-Mar-27','29-Mar-27','05-Abr-27','12-Abr-27','19-Abr-27','26-Abr-27'];
+const FASES=['Fase 1 · Prueba','Fase 1 · Prueba','Fase 1 · Prueba','Fase 1 · Prueba','Fase 1 · Prueba','Fase 1 · Prueba','Fase 1 · Prueba','Fase 1 · Prueba','Fase 1 · Prueba','Fase 2 · Gasto Alpha','Fase 2 · Gasto Alpha','Fase 2 · Gasto Alpha','Fase 2 · Gasto Alpha','Fase 2 · Gasto Alpha','Fase 2 · Gasto Alpha','Fase 2 · Gasto Alpha','Fase 2 · Gasto Alpha','Fase 3 · Teknor 100%','Fase 3 · Teknor 100%','Fase 3 · Teknor 100%','Fase 3 · Teknor 100%','Fase 3 · Teknor 100%','Fase 3 · Teknor 100%','Fase 3 · Teknor 100%','Fase 3 · Teknor 100%','Fase 3 · Teknor 100%'];
+const ARR_AG=[0,40000,0,0,0,40000,0,0,0,40000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+const ARR_TK=[40000,0,40000,0,0,40000,0,0,40000,40000,0,0,0,40000,0,0,0,40000,0,40000,0,40000,0,40000,0,40000];
+const EPS=0.01;
+
+function buildSeries(){
+  const days=[],agV=[],tkV=[],totV=[];
+  let ag=80000,tk=0;
+  const add=(d,a,t)=>{days.push(d);agV.push(Math.round(Math.max(a,0)));tkV.push(Math.round(Math.max(t,0)));totV.push(Math.round(Math.max(a,0)+Math.max(t,0)));};
+  add(0,ag,tk);
+  for(let w=0;w<26;w++){
+    const d0=w*7,cA=c1m,cT=w<17?c1m:call;
+    if(ARR_AG[w]||ARR_TK[w]){add(d0-EPS,ag,tk);ag+=ARR_AG[w];tk+=ARR_TK[w];add(d0+EPS,ag,tk);}
+    ag=Math.max(ag-cA,0);tk=Math.max(tk-cT,0);
+    add((w+1)*7,ag,tk);
+  }
+  return{days,agV,tkV,totV};
+}
+const S=buildSeries();
+
+function snapshots(){
+  const r=[];let ag=80000,tk=0;
+  r.push({ag,tk,tot:ag+tk});
+  for(let w=0;w<25;w++){
+    ag+=ARR_AG[w];tk+=ARR_TK[w];
+    ag=Math.max(ag-c1m,0);tk=Math.max(tk-(w<17?c1m:call),0);
+    r.push({ag:Math.round(ag),tk:Math.round(tk),tot:Math.round(ag+tk)});
+  }
+  return r;
+}
+const SNAPS=snapshots();
+
+const gc='#e2e1db',tc='#898781';
+const BANDA=['rgba(219,234,254,.2)','rgba(254,243,199,.22)','rgba(220,252,231,.22)'];
+const FBOUNDS=[[0,56],[63,119],[119,182]];
+
+const bandaP=(mn,mx)=>({id:'banda',beforeDraw(ch){
+  const{ctx,chartArea:{left,right,top,bottom},scales:{x}}=ch;
+  FBOUNDS.forEach(([s,e],bi)=>{
+    const ls=Math.max(s,mn),le=Math.min(e,mx);
+    if(ls>=le)return;
+    const x0=x.getPixelForValue(ls),x1=x.getPixelForValue(le);
+    ctx.fillStyle=BANDA[bi];
+    ctx.fillRect(Math.max(x0,left),top,Math.min(x1,right)-Math.max(x0,left),bottom-top);
+  });
+}});
+
+let curW=0;
+const cursorP=()=>({id:'cursor',afterDraw(ch){
+  const{ctx,chartArea:{top,bottom},scales:{x}}=ch;
+  const px=x.getPixelForValue(curW*7);
+  if(!px)return;
+  ctx.save();
+  ctx.strokeStyle='rgba(0,0,0,.2)';
+  ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(px,top);ctx.lineTo(px,bottom);ctx.stroke();
+  ctx.restore();
+}});
+
+function customTooltip({chart,tooltip}){
+  const box=document.getElementById('ttBox');
+  if(!tooltip.dataPoints?.length){box.style.display='none';return;}
+  const dx=tooltip.dataPoints[0].parsed.x;
+  const wi=Math.min(Math.round(dx/7),25);
+  const isArr=Math.abs(dx%7)<0.05&&dx>0;
+  document.getElementById('ttTitle').textContent=WEEKS[wi]+(isArr?' · 📦 Arribo FCL':'');
+  const getVal=idx=>{const dp=tooltip.dataPoints.find(d=>d.datasetIndex===idx);return dp?Math.round(dp.parsed.y):null;};
+  const rows=[
+    {color:'#2a78d6',label:'Alpha Gary',val:getVal(0)},
+    {color:'#1baf7a',label:'Teknor Apex',val:getVal(1)},
+    {color:'#7f77dd',label:'Total',val:getVal(2),dash:true},
+  ];
+  document.getElementById('ttRows').innerHTML=rows.map(r=>{
+    if(r.val===null)return'';
+    const dot=r.dash
+      ?`<span style="width:14px;height:0;border-top:2px dashed ${r.color};display:inline-block;flex-shrink:0;"></span>`
+      :`<span style="width:8px;height:8px;border-radius:50%;background:${r.color};display:inline-block;flex-shrink:0;"></span>`;
+    return`<div class="tt-row"><span class="tt-lbl">${dot}${r.label}</span><span class="tt-val">${r.val.toLocaleString()} lbs</span></div>`;
+  }).join('');
+  const can=chart.canvas,ttW=230,ttH=105,m=12;
+  let lft=tooltip.caretX+m;if(lft+ttW>can.offsetWidth)lft=tooltip.caretX-ttW-m;
+  lft=Math.max(4,Math.min(lft,can.offsetWidth-ttW-4));
+  let top=tooltip.caretY+m;if(top+ttH>can.offsetHeight)top=tooltip.caretY-ttH-m;
+  top=Math.max(4,Math.min(top,can.offsetHeight-ttH-4));
+  box.style.cssText=`display:block;left:${lft}px;top:${top}px;position:absolute;`;
+}
+
+const ZOOMS=[[0,182],[0,62],[62,125],[119,182]];
+let chart=null;
+
+function filterR(mn,mx){
+  const d=[],a=[],t=[],tt=[];
+  S.days.forEach((day,i)=>{
+    if(day>=mn-0.05&&day<=mx+0.05){d.push(day);a.push(S.agV[i]);t.push(S.tkV[i]);tt.push(S.totV[i]);}
+  });
+  return{d,a,t,tt};
+}
+
+function ssLine(mn,mx){
+  const pts=[[0,80000,40000],[62.99,80000,40000],[63,0,80000],[182,0,80000]];
+  const d=[],sa=[],st=[];
+  if(!pts.some(p=>p[0]<=mn+0.05)){d.push(mn);sa.push(mn<63?80000:0);st.push(mn<63?40000:80000);}
+  pts.forEach(([pd,psa,pst])=>{if(pd>=mn-0.05&&pd<=mx+0.05){d.push(pd);sa.push(psa);st.push(pst);}});
+  if(!d.length||d[d.length-1]<mx-0.05){d.push(mx);const v=mx<63?80000:0;sa.push(v);st.push(mx<63?40000:80000);}
+  return{d,sa,st};
+}
+
+function mkChart(zi){
+  const[mn,mx]=ZOOMS[zi];
+  const f=filterR(mn,mx);
+  const ss=ssLine(mn,mx);
+  const ticks=Array.from({length:26},(_,i)=>({d:i*7,l:WEEKS[i].slice(0,6)})).filter(t=>t.d>=mn&&t.d<=mx);
+  if(chart)chart.destroy();
+  chart=new Chart(document.getElementById('mc'),{
+    type:'scatter',
+    plugins:[bandaP(mn,mx),cursorP()],
+    data:{datasets:[
+      {label:'Alpha Gary',data:f.d.map((d,i)=>({x:d,y:f.a[i]})),borderColor:'#2a78d6',backgroundColor:'rgba(42,120,214,.07)',showLine:true,fill:true,borderWidth:2.5,pointRadius:0,pointHoverRadius:0,tension:0,order:2},
+      {label:'Teknor Apex',data:f.d.map((d,i)=>({x:d,y:f.t[i]})),borderColor:'#1baf7a',backgroundColor:'rgba(27,175,122,.07)',showLine:true,fill:true,borderWidth:2.5,pointRadius:0,pointHoverRadius:0,tension:0,order:3},
+      {label:'Total',data:f.d.map((d,i)=>({x:d,y:f.tt[i]})),borderColor:'#7f77dd',backgroundColor:'transparent',showLine:true,fill:false,borderWidth:1.8,borderDash:[5,4],pointRadius:0,pointHoverRadius:0,tension:0,order:1},
+      {label:'Ss AG',data:ss.d.map((d,i)=>({x:d,y:ss.sa[i]})),borderColor:'#e24b4a',backgroundColor:'transparent',showLine:true,fill:false,borderWidth:1.5,borderDash:[8,5],pointRadius:0,pointHoverRadius:0,tension:0,order:4},
+      {label:'Ss TK',data:ss.d.map((d,i)=>({x:d,y:ss.st[i]})),borderColor:'#eda100',backgroundColor:'transparent',showLine:true,fill:false,borderWidth:1.5,borderDash:[8,5],pointRadius:0,pointHoverRadius:0,tension:0,order:5},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:250},
+      interaction:{mode:'nearest',axis:'x',intersect:false},
+      plugins:{legend:{display:false},tooltip:{enabled:false,external:customTooltip}},
+      scales:{
+        x:{type:'linear',min:mn,max:mx,ticks:{color:tc,font:{size:9},maxRotation:45,minRotation:45,callback:v=>{const t=ticks.find(t=>Math.abs(t.d-v)<3.5);return t?t.l:'';},stepSize:7},grid:{color:gc,lineWidth:0.5},title:{display:true,text:'Semana',color:tc,font:{size:10}}},
+        y:{min:0,max:zi===3?140000:260000,ticks:{color:tc,font:{size:10},stepSize:zi===3?20000:50000,callback:v=>v===0?'0':Math.round(v/1000)+'k'},grid:{color:gc,lineWidth:0.5},border:{display:false},title:{display:true,text:'Inventario (lbs)',color:tc,font:{size:10}}}
+      }
+    }
+  });
+}
+
+function updKPIs(w){
+  const s=SNAPS[Math.min(w,25)];
+  const f=v=>Math.round(v).toLocaleString()+' lbs';
+  document.getElementById('kAG').textContent=f(s.ag);
+  document.getElementById('kTK').textContent=f(s.tk);
+  document.getElementById('kTOT').textContent=f(s.tot);
+  document.getElementById('kFECHA').textContent=WEEKS[Math.min(w,25)];
+  document.getElementById('kFASE').textContent=FASES[Math.min(w,25)];
+  document.getElementById('kAG').className='kpi-val'+(w<9&&s.ag<80000?' alert':'');
+  document.getElementById('kTK').className='kpi-val'+(s.tk>=80000?' ok':'');
+}
+
+function setWeek(w){
+  curW=w;
+  document.getElementById('slider').value=w;
+  document.getElementById('slOut').textContent='Sem. '+w+' · '+WEEKS[Math.min(w,25)].slice(0,6);
+  updKPIs(w);
+  if(chart)chart.update('none');
+}
+
+function sz(zi){
+  document.querySelectorAll('.zbtn').forEach((b,j)=>b.classList.toggle('active',j===zi));
+  mkChart(zi);
+  chart.update('none');
+}
+
+document.getElementById('slider').addEventListener('input',e=>setWeek(+e.target.value));
+
+let playing=false,timer=null;
+document.getElementById('btnPlay').addEventListener('click',()=>{
+  playing=!playing;
+  const btn=document.getElementById('btnPlay');
+  if(playing){
+    btn.textContent='⏸ Pausar';
+    let w=curW;
+    timer=setInterval(()=>{
+      w=w>=25?0:w+1;setWeek(w);
+      if(w===25){clearInterval(timer);playing=false;btn.textContent='▶ Reproducir';}
+    },400);
+  }else{
+    clearInterval(timer);
+    btn.textContent='▶ Reproducir';
+  }
+});
+
+mkChart(0);
+setWeek(0);
+</script>
+</body>
+</html>
